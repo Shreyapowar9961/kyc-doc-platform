@@ -21,6 +21,7 @@ const {
 const storage = require("../lib/storage");
 const mlClient = require("../lib/mlClient");
 const { performCrossChecks } = require("../lib/crossCheck");
+const { verifyDocumentAuthenticity } = require("../lib/verification");
 
 const router = express.Router();
 
@@ -158,25 +159,59 @@ router.get("/", authenticate, async (req, res, next) => {
 router.get("/:id", authenticate, requireApplicationAccess, (req, res) => {
   const app = req.application;
 
-  // Mask internal database storage paths in user responses
-  const safeDocuments = app.documents.map((d) => ({
-    id: d.id,
-    applicationId: d.applicationId,
-    originalName: d.originalName,
-    class: d.class,
-    confidence: d.confidence,
-    outcome: d.outcome,
-    ocrChars: d.ocrChars,
-    extractedFields: d.extractedFields,
-    fileSize: d.fileSize,
-    mimeType: d.mimeType,
-    uploadDate: d.uploadDate,
-  }));
+  // Enrich documents with verification & mask internal storage paths
+  const safeDocuments = app.documents.map((d) => {
+    let extractedFields = (d.extractedFields && typeof d.extractedFields === "object") ? { ...d.extractedFields } : {};
+    let verification = extractedFields.verification;
+    if (!verification) {
+      verification = verifyDocumentAuthenticity({
+        docClass: d.class,
+        text: d.text || "",
+        confidence: d.confidence,
+        ocrChars: d.ocrChars || 0,
+        extractedFields,
+      });
+      extractedFields.verification = verification;
+    }
+
+    return {
+      id: d.id,
+      applicationId: d.applicationId,
+      originalName: d.originalName,
+      class: d.class,
+      confidence: d.confidence,
+      outcome: d.outcome,
+      ocrChars: d.ocrChars,
+      extractedFields,
+      verification,
+      fileSize: d.fileSize,
+      mimeType: d.mimeType,
+      uploadDate: d.uploadDate,
+    };
+  });
+
+  const totalDocs = safeDocuments.length;
+  const avgScore = totalDocs > 0
+    ? Math.round(safeDocuments.reduce((sum, d) => sum + (d.verification?.authenticityScore || 0), 0) / totalDocs)
+    : 0;
+
+  let dossierStatus = "INCOMPLETE";
+  if (totalDocs > 0) {
+    dossierStatus = avgScore >= 80 ? "AUTHENTIC" : avgScore >= 60 ? "NEEDS_REVIEW" : "UNVERIFIED";
+  }
+
+  const liveChecks = performCrossChecks(app.documents);
 
   res.json({
     application: {
       ...app,
       documents: safeDocuments,
+      dossierVerification: {
+        overallScore: avgScore,
+        status: dossierStatus,
+        totalDocuments: totalDocs,
+        crossChecks: liveChecks,
+      },
     },
   });
 });
@@ -222,13 +257,22 @@ router.post(
           };
         }
 
-        // 3. Extract KYC fields (R2)
+        // 3. Extract KYC fields & verify authenticity (R1 + R2)
         let extracted = {};
         if (mlResult.text) {
           try {
             extracted = await mlClient.extractFields(mlResult.text, mlResult.class);
           } catch (_) {}
         }
+
+        const verification = verifyDocumentAuthenticity({
+          docClass: mlResult.class || "other_unknown",
+          text: mlResult.text || "",
+          confidence: mlResult.confidence || 0,
+          ocrChars: mlResult.ocr_chars || 0,
+          extractedFields: extracted,
+        });
+        extracted.verification = verification;
 
         // 4. Save to Private Storage
         const fileUuid = uuidv4();

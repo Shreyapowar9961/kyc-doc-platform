@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getApplications, createApplication, Application } from "../../lib/api";
+import { useRouter } from "next/navigation";
+import { getApplications, createApplication, getCurrentUser, Application } from "../../lib/api";
 
 const STATUS_BADGES: Record<string, string> = {
   DRAFT: "bg-slate-100 text-slate-700 border-slate-300",
@@ -12,6 +13,7 @@ const STATUS_BADGES: Record<string, string> = {
 };
 
 export default function ApplicationsPage() {
+  const router = useRouter();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -34,8 +36,13 @@ export default function ApplicationsPage() {
   };
 
   useEffect(() => {
+    const cur = getCurrentUser();
+    if (!cur) {
+      router.push("/login");
+      return;
+    }
     fetchApps();
-  }, []);
+  }, [router]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();

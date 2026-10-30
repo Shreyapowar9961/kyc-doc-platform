@@ -13,7 +13,11 @@ export default function HomePage() {
     const u = getCurrentUser();
     setUser(u);
     if (u) {
-      if (["OFFICER", "MANAGER", "FRAUD_ANALYST"].includes(u.role)) {
+      if (u.role === "ADMIN") {
+        router.push("/admin/users");
+      } else if (u.role === "AUDITOR") {
+        router.push("/admin/audit");
+      } else if (["OFFICER", "MANAGER", "FRAUD_ANALYST"].includes(u.role)) {
         router.push("/officer");
       } else {
         router.push("/applications");

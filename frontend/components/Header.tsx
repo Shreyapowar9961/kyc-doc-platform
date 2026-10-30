@@ -20,9 +20,18 @@ export default function Header() {
     router.push("/login");
   };
 
-  const isStaff = user && ["OFFICER", "MANAGER", "FRAUD_ANALYST"].includes(user.role);
+  const isStaff = user && ["OFFICER", "MANAGER", "FRAUD_ANALYST", "ADMIN"].includes(user.role);
   const isAdmin = user?.role === "ADMIN";
   const isAuditor = user && ["AUDITOR", "ADMIN"].includes(user.role);
+
+  const roleColors: Record<string, string> = {
+    APPLICANT: "bg-blue-900/60 text-blue-200 border-blue-700",
+    OFFICER: "bg-emerald-900/60 text-emerald-200 border-emerald-700",
+    MANAGER: "bg-purple-900/60 text-purple-200 border-purple-700",
+    FRAUD_ANALYST: "bg-amber-900/60 text-amber-200 border-amber-700",
+    AUDITOR: "bg-cyan-900/60 text-cyan-200 border-cyan-700",
+    ADMIN: "bg-rose-900/60 text-rose-200 border-rose-700",
+  };
 
   return (
     <header className="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-50 shadow-md">
@@ -112,7 +121,7 @@ export default function Header() {
                 <div className="ml-3 pl-3 border-l border-slate-700 flex items-center gap-3">
                   <div className="text-right hidden md:block">
                     <p className="text-xs font-semibold text-white leading-none">{user.name || user.email}</p>
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-400">
+                    <span className={`inline-block mt-0.5 text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${roleColors[user.role] || "bg-indigo-900/60 text-indigo-200 border-indigo-700"}`}>
                       {user.role}
                     </span>
                   </div>

@@ -23,11 +23,11 @@ const passwordSchema = z
     "Password is too long (maximum 72 bytes)"
   );
 
-// Extra fields, such as "role", are ignored by these schemas.
 const registerSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email").max(254),
   name: z.string().trim().max(100).optional(),
   password: passwordSchema,
+  role: z.literal("APPLICANT").optional(),
 });
 
 const loginSchema = z.object({
@@ -60,9 +60,16 @@ const loginLimiter = rateLimit({
   message: { error: "Too many login attempts, try again later" },
 });
 
-// POST /auth/register - public sign-up. The role is always APPLICANT.
+// POST /auth/register - public sign-up. The role is strictly APPLICANT.
 router.post("/register", registerLimiter, async (req, res, next) => {
   try {
+    // Explicit server-side rejection for non-applicant registration attempts
+    if (req.body && req.body.role && req.body.role !== "APPLICANT") {
+      return res.status(403).json({
+        error: "Public self-registration is strictly restricted to applicants. Staff accounts (Officer, Manager, Fraud Analyst, Auditor, Admin) must be provisioned by a platform administrator.",
+      });
+    }
+
     const parsed = registerSchema.safeParse(req.body);
     if (!parsed.success) {
       return res
@@ -75,7 +82,12 @@ router.post("/register", registerLimiter, async (req, res, next) => {
     let user;
     try {
       user = await prisma.user.create({
-        data: { email, name: name || null, passwordHash },
+        data: {
+          email,
+          name: name || null,
+          passwordHash,
+          role: "APPLICANT",
+        },
         select: { id: true, email: true, name: true, role: true },
       });
     } catch (err) {

@@ -81,7 +81,11 @@ export default function AdminAuditPage() {
 
   useEffect(() => {
     const cur = getCurrentUser();
-    if (cur && !["AUDITOR", "ADMIN"].includes(cur.role)) {
+    if (!cur) {
+      router.push("/login");
+      return;
+    }
+    if (!["AUDITOR", "ADMIN"].includes(cur.role)) {
       router.push("/applications");
       return;
     }

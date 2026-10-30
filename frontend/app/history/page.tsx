@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   getHistory,
   downloadFile,
@@ -34,6 +35,7 @@ interface HistoryDocument {
 }
 
 export default function HistoryPage() {
+  const router = useRouter();
   const [docs, setDocs] = useState<HistoryDocument[]>([]);
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
@@ -49,8 +51,13 @@ export default function HistoryPage() {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    setUser(getCurrentUser());
-  }, []);
+    const cur = getCurrentUser();
+    if (!cur) {
+      router.push("/login");
+      return;
+    }
+    setUser(cur);
+  }, [router]);
 
   const loadData = useCallback(async () => {
     setLoading(true);

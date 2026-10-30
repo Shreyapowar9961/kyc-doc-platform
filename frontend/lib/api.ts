@@ -95,6 +95,23 @@ export interface User {
   role: Role;
 }
 
+export interface VerificationCheck {
+  name: string;
+  passed: boolean;
+  score: number;
+  maxScore: number;
+  details: string;
+}
+
+export interface DocumentVerification {
+  authenticityScore: number;
+  verificationStatus: "VERIFIED" | "PARTIALLY_VERIFIED" | "UNVERIFIED";
+  statusBadge: string;
+  statusText: string;
+  checks: VerificationCheck[];
+  summary: string;
+}
+
 export interface Document {
   id: number;
   applicationId?: string;
@@ -108,8 +125,10 @@ export interface Document {
     aadhaar_masked?: string;
     name?: string;
     dob?: string;
+    verification?: DocumentVerification;
     [key: string]: any;
   };
+  verification?: DocumentVerification;
   fileSize?: number;
   mimeType?: string;
   uploadDate: string;
@@ -155,6 +174,12 @@ export interface Application {
     id: string;
     name: string;
     email: string;
+  };
+  dossierVerification?: {
+    overallScore: number;
+    status: "AUTHENTIC" | "NEEDS_REVIEW" | "UNVERIFIED" | "INCOMPLETE";
+    totalDocuments: number;
+    crossChecks?: any[];
   };
 }
 
@@ -257,6 +282,11 @@ export async function getHistory(params: any = {}) {
 export async function getAdminUsers(page = 1, limit = 20) {
   const res = await api.get("/admin/users", { params: { page, limit } });
   return res.data;
+}
+
+export async function provisionUser(data: { email: string; name?: string; password: string; role: Role }) {
+  const res = await api.post("/admin/users", data);
+  return res.data.user;
 }
 
 export async function updateRole(userId: string, role: Role) {

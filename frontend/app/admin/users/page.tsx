@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { getAdminUsers, updateRole, Role, getCurrentUser } from "@/lib/api";
+import { getAdminUsers, updateRole, provisionUser, Role, getCurrentUser } from "@/lib/api";
 import { useRouter } from "next/navigation";
 
 interface AdminUser {
@@ -14,6 +14,7 @@ interface AdminUser {
 }
 
 const ROLES: Role[] = ["APPLICANT", "OFFICER", "MANAGER", "FRAUD_ANALYST", "AUDITOR", "ADMIN"];
+const STAFF_ROLES: Role[] = ["OFFICER", "MANAGER", "FRAUD_ANALYST", "AUDITOR", "ADMIN"];
 
 export default function AdminUsersPage() {
   const router = useRouter();
@@ -24,6 +25,15 @@ export default function AdminUsersPage() {
   const [total, setTotal] = useState(0);
   const [statusMsg, setStatusMsg] = useState<{ text: string; error?: boolean } | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // Staff Provisioning Modal State
+  const [showProvisionModal, setShowProvisionModal] = useState(false);
+  const [provisionEmail, setProvisionEmail] = useState("");
+  const [provisionName, setProvisionName] = useState("");
+  const [provisionPassword, setProvisionPassword] = useState("");
+  const [provisionRole, setProvisionRole] = useState<Role>("OFFICER");
+  const [provisioning, setProvisioning] = useState(false);
+  const [provisionError, setProvisionError] = useState("");
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -45,7 +55,11 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     const cur = getCurrentUser();
-    if (cur && cur.role !== "ADMIN") {
+    if (!cur) {
+      router.push("/login");
+      return;
+    }
+    if (cur.role !== "ADMIN") {
       router.push("/applications");
       return;
     }
@@ -71,17 +85,50 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleProvisionStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProvisionError("");
+    setProvisioning(true);
+    try {
+      await provisionUser({
+        email: provisionEmail.trim(),
+        name: provisionName.trim() || undefined,
+        password: provisionPassword,
+        role: provisionRole,
+      });
+      setShowProvisionModal(false);
+      setProvisionEmail("");
+      setProvisionName("");
+      setProvisionPassword("");
+      setProvisionRole("OFFICER");
+      setStatusMsg({ text: `Staff account provisioned successfully with role ${provisionRole}` });
+      loadUsers();
+    } catch (err: any) {
+      setProvisionError(err?.response?.data?.error || "Failed to provision staff account");
+    } finally {
+      setProvisioning(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-6 py-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">User Administration</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Manage user roles and system privileges across the platform (Admin only).
+            Manage user roles and provision authorized staff accounts (Admin only).
           </p>
         </div>
-        <div className="text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg border font-semibold">
-          Total Users: {total}
+        <div className="flex items-center gap-3">
+          <div className="text-xs bg-slate-100 text-slate-600 px-3 py-2 rounded-lg border font-semibold">
+            Total Users: {total}
+          </div>
+          <button
+            onClick={() => setShowProvisionModal(true)}
+            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm transition flex items-center gap-1.5"
+          >
+            <span>+</span> Provision Staff Account
+          </button>
         </div>
       </div>
 
@@ -188,6 +235,103 @@ export default function AdminUsersPage() {
           </div>
         )}
       </div>
+
+      {/* Staff Account Provisioning Modal */}
+      {showProvisionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in-95">
+            <h3 className="text-lg font-bold text-slate-900 mb-1">Provision Staff Account</h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Authorized admin provisioning for loan officers, managers, fraud analysts, and auditors.
+            </p>
+
+            {provisionError && (
+              <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+                {provisionError}
+              </div>
+            )}
+
+            <form onSubmit={handleProvisionStaff} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Assigned Staff Role
+                </label>
+                <select
+                  value={provisionRole}
+                  onChange={(e) => setProvisionRole(e.target.value as Role)}
+                  className="w-full text-xs font-semibold border border-slate-300 rounded-lg px-3 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {STAFF_ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={provisionName}
+                  onChange={(e) => setProvisionName(e.target.value)}
+                  placeholder="e.g. Priya Sharma"
+                  className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Official Email Address
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={provisionEmail}
+                  onChange={(e) => setProvisionEmail(e.target.value)}
+                  placeholder="priya.sharma@bank.local"
+                  className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Temporary Password (Min 10 chars)
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={10}
+                  value={provisionPassword}
+                  onChange={(e) => setProvisionPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowProvisionModal(false)}
+                  className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={provisioning}
+                  className="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition disabled:opacity-50"
+                >
+                  {provisioning ? "Provisioning..." : "Provision Account"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
