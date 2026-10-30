@@ -86,7 +86,7 @@ function validateMagicBytes(buffer, ext) {
 }
 
 // ─── POST /applications — Create a new DRAFT application ─────────────────────
-router.post("/", authenticate, requireRole("APPLICANT"), async (req, res, next) => {
+router.post("/", authenticate, requireRole("APPLICANT", "ADMIN"), async (req, res, next) => {
   try {
     const title = req.body.title?.trim() || `Loan Application ${new Date().toLocaleDateString()}`;
 
@@ -124,6 +124,9 @@ router.get("/", authenticate, async (req, res, next) => {
     } else if (["OFFICER", "MANAGER", "FRAUD_ANALYST"].includes(user.role)) {
       // Staff see submitted applications
       where = { status: { in: ["SUBMITTED", "UNDER_REVIEW", "RECOMMENDED"] } };
+    } else if (["ADMIN", "AUDITOR"].includes(user.role)) {
+      // Admins and Auditors have platform-wide oversight to view applications
+      where = {};
     } else {
       return res.status(403).json({ error: "Access denied" });
     }

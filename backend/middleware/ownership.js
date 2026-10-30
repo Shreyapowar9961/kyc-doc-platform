@@ -65,9 +65,8 @@ async function requireApplicationAccess(req, res, next) {
       if (app.status === "DRAFT") {
         return sendError(res, 403, "Officers cannot view draft applications");
       }
-    } else if (["AUDITOR", "ADMIN"].includes(user.role)) {
-      // Auditors & Admins cannot access raw applications/documents
-      return sendError(res, 403, "This role cannot access application details");
+    } else if (["ADMIN", "AUDITOR"].includes(user.role)) {
+      // Admins and Auditors have platform oversight to inspect application details & checks
     } else {
       return sendError(res, 403, "Unauthorized role");
     }
@@ -86,8 +85,11 @@ function requireDraftOwner(req, res, next) {
   if (!req.application) return sendError(res, 400, "Application context missing");
   const user = req.user;
 
-  if (user.role !== "APPLICANT" || req.application.applicantId !== user.id) {
-    return sendError(res, 403, "Only the applicant can modify this application");
+  const isOwner = req.application.applicantId === user.id;
+  const isAllowed = ["APPLICANT", "ADMIN"].includes(user.role);
+
+  if (!isAllowed || (!isOwner && user.role !== "ADMIN")) {
+    return sendError(res, 403, "Only the applicant or administrator can modify this application");
   }
 
   if (req.application.status !== "DRAFT") {

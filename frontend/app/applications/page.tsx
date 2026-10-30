@@ -14,6 +14,7 @@ const STATUS_BADGES: Record<string, string> = {
 export default function ApplicationsPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [title, setTitle] = useState("");
   const [creating, setCreating] = useState(false);
@@ -21,10 +22,12 @@ export default function ApplicationsPage() {
   const fetchApps = async () => {
     try {
       setLoading(true);
+      setErrorMsg(null);
       const data = await getApplications();
       setApplications(data.applications || []);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to load applications:", err);
+      setErrorMsg(err?.response?.data?.error || err.message || "Failed to load applications");
     } finally {
       setLoading(false);
     }
@@ -38,12 +41,14 @@ export default function ApplicationsPage() {
     e.preventDefault();
     try {
       setCreating(true);
+      setErrorMsg(null);
       await createApplication(title.trim() || undefined);
       setTitle("");
       setShowCreateModal(false);
       fetchApps();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to create application:", err);
+      setErrorMsg(err?.response?.data?.error || err.message || "Failed to create application");
     } finally {
       setCreating(false);
     }
@@ -54,7 +59,7 @@ export default function ApplicationsPage() {
       {/* Header bar */}
       <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-200">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Loan & KYC Applications</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Loan &amp; KYC Applications</h1>
           <p className="text-sm text-slate-500 mt-1">
             Manage your document submissions and track review status
           </p>
@@ -69,6 +74,12 @@ export default function ApplicationsPage() {
           New Application
         </button>
       </div>
+
+      {errorMsg && (
+        <div className="mb-6 bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl text-sm font-medium">
+          {errorMsg}
+        </div>
+      )}
 
       {/* Applications List */}
       {loading ? (
@@ -110,6 +121,12 @@ export default function ApplicationsPage() {
                   <span>
                     {(app as any)._count?.documents ?? app.documents?.length ?? 0} Documents
                   </span>
+                  {app.applicant && (
+                    <>
+                      <span>•</span>
+                      <span>Applicant: {app.applicant.name || app.applicant.email}</span>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="text-slate-400 group-hover:text-indigo-600">
@@ -124,35 +141,41 @@ export default function ApplicationsPage() {
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-slate-900 mb-2">Create Loan Application</h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Enter a title or reference name for this application (e.g. Home Loan March 2026).
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in-95">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">Create New Application</h3>
+            <p className="text-xs text-slate-500 mb-5">
+              Enter a reference title for your loan application dossier. You can upload up to 15 documents.
             </p>
+
             <form onSubmit={handleCreate} className="space-y-4">
-              <input
-                type="text"
-                autoFocus
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Personal Loan Application"
-                className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
-              <div className="flex justify-end gap-2 pt-2">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Application Title (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Home Loan Application - 2026"
+                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100"
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={creating}
-                  className="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50"
+                  className="px-5 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition disabled:opacity-50"
                 >
-                  {creating ? "Creating..." : "Create"}
+                  {creating ? "Creating..." : "Create Application"}
                 </button>
               </div>
             </form>
