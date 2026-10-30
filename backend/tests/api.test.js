@@ -281,12 +281,12 @@ describe("KYC & Loan Platform - Comprehensive API Test Suite", () => {
       expect(res.body.user.passwordHash).toBeUndefined();
     });
 
-    it("register with sneaky role ADMIN -> role strictly stays APPLICANT", async () => {
+    it("register with sneaky role ADMIN -> rejected with 403 Forbidden", async () => {
       const res = await request(app)
         .post("/auth/register")
         .send({ email: "sneaky@example.com", name: "Sneaky", password: "ValidPassword123", role: "ADMIN" });
-      expect(res.status).toBe(201);
-      expect(res.body.user.role).toBe("APPLICANT");
+      expect(res.status).toBe(403);
+      expect(res.body.error).toMatch(/restricted to applicants/i);
     });
 
     it("duplicate registration email returns 409", async () => {
