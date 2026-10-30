@@ -1,3 +1,6 @@
+-- AlterTable User - add updatedAt if missing
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
 -- AlterTable Document - add nullable columns for applications, storage and extraction
 ALTER TABLE "Document" 
   ADD COLUMN IF NOT EXISTS "storagePath" TEXT,
@@ -10,6 +13,8 @@ ALTER TABLE "Document"
 -- AlterTable Document - make legacy columns optional
 ALTER TABLE "Document" ALTER COLUMN "path" DROP NOT NULL;
 ALTER TABLE "Document" ALTER COLUMN "embedding" DROP NOT NULL;
+ALTER TABLE "Document" ALTER COLUMN "text" DROP NOT NULL;
+ALTER TABLE "Document" ALTER COLUMN "text" SET DEFAULT '';
 
 -- CreateEnum ApplicationStatus
 DO $$ BEGIN

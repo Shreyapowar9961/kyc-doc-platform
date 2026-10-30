@@ -242,6 +242,7 @@ router.post(
             confidence: mlResult.confidence || 0,
             outcome: mlResult.outcome || "NEEDS_REVIEW",
             ocrChars: mlResult.ocr_chars || 0,
+            text: mlResult.text || "",
             extractedFields: Object.keys(extracted).length > 0 ? extracted : undefined,
             fileSize: file.size,
             mimeType: file.mimetype,
