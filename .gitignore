@@ -1,0 +1,54 @@
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# Database & SQLite files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Uploads & Temporary files
+uploads/
+*/uploads/
+temp/
+tmp/
+*.bak
+*.backup
+*.log
+
+# Dependencies
+node_modules/
+*/node_modules/
+.pnpm-store/
+
+# Python & ML
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.env-ml/
+*.egg-info/
+dist/
+build/
+ml/models/*.joblib
+ml/models/*.pkl
+data/kyc/
+
+# Next.js Build
+.next/
+out/
+.vercel/
+
+# OS and Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

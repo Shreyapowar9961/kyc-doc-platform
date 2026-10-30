@@ -1,0 +1,26 @@
+# ml/requirements.txt
+# Smart Document Classifier — Python ML Dependencies
+
+# OCR
+pytesseract>=0.3.10
+Pillow>=10.2.0
+pdf2image>=1.17.0
+pdfplumber>=0.10.3
+
+# ML / Classification
+scikit-learn==1.3.2
+numpy>=1.26.0
+pandas>=2.2.0
+
+# Embeddings (sentence-transformers downloads ~80MB model on first use)
+sentence-transformers>=2.6.1
+torch>=2.2.0
+
+# Optional: DistilBERT fine-tuning (stretch goal)
+# transformers>=4.38.0
+# accelerate>=0.27.0
+# datasets>=2.17.0
+
+# Utilities
+tqdm>=4.66.0
+joblib>=1.3.0

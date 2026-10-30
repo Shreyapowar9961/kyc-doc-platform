@@ -1,0 +1,140 @@
+// backend/prisma/schema.prisma
+// KYC & Loan Document Platform — PostgreSQL Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  APPLICANT
+  OFFICER
+  MANAGER
+  FRAUD_ANALYST
+  AUDITOR
+  ADMIN
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  RECOMMENDED
+}
+
+enum DocOutcome {
+  CLASSIFIED
+  NEEDS_REVIEW
+  UNREADABLE
+}
+
+enum Severity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  name         String?
+  passwordHash String
+  role         Role          @default(APPLICANT)
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  applications Application[]
+  reviews      Review[]
+  auditLogs    AuditLog[]
+}
+
+model Application {
+  id          String            @id @default(cuid())
+  applicantId String
+  title       String?
+  status      ApplicationStatus @default(DRAFT)
+  createdAt   DateTime          @default(now())
+  submittedAt DateTime?
+  applicant   User              @relation(fields: [applicantId], references: [id])
+  documents   Document[]
+  checks      CheckResult[]
+  reviews     Review[]
+
+  @@index([applicantId])
+  @@index([status])
+}
+
+model Document {
+  id              Int          @id @default(autoincrement())
+  filename        String
+  originalName    String
+  path            String?
+  storagePath     String?
+  class           String
+  confidence      Float        @default(0)
+  outcome         DocOutcome?
+  ocrChars        Int?
+  text            String?
+  extractedFields Json?
+  embedding       String?
+  uploadDate      DateTime     @default(now())
+  fileSize        Int          @default(0)
+  pageCount       Int          @default(1)
+  mimeType        String       @default("application/pdf")
+  manualOverride  Boolean      @default(false)
+  userId          String?
+  applicationId   String?
+  application     Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([class])
+  @@index([uploadDate])
+  @@index([applicationId])
+}
+
+model AuditLog {
+  id            Int      @id @default(autoincrement())
+  userId        String?
+  action        String
+  documentId    Int?
+  applicationId String?
+  details       Json?
+  createdAt     DateTime @default(now())
+  user          User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model CheckResult {
+  id            Int         @id @default(autoincrement())
+  applicationId String
+  check         String
+  severity      Severity
+  reasonCode    String
+  message       String
+  evidence      Json?
+  createdAt     DateTime    @default(now())
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+}
+
+model Review {
+  id             Int         @id @default(autoincrement())
+  applicationId  String
+  reviewerId     String
+  recommendation String
+  reason         String
+  createdAt      DateTime    @default(now())
+  application    Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  reviewer       User        @relation(fields: [reviewerId], references: [id])
+
+  @@index([applicationId])
+  @@index([reviewerId])
+}

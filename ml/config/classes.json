@@ -1,0 +1,11 @@
+[
+  "aadhaar_card",
+  "pan_card",
+  "passport",
+  "voter_id",
+  "driving_licence",
+  "bank_statement",
+  "salary_slip",
+  "income_proof",
+  "other_unknown"
+]

@@ -1,0 +1,20 @@
+{
+  "IDENTITY_PROOF": [
+    "aadhaar_card",
+    "pan_card",
+    "passport",
+    "voter_id",
+    "driving_licence"
+  ],
+  "ADDRESS_PROOF": [
+    "aadhaar_card",
+    "passport",
+    "voter_id",
+    "driving_licence"
+  ],
+  "INCOME_PROOF": [
+    "bank_statement",
+    "salary_slip",
+    "income_proof"
+  ]
+}
