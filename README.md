@@ -86,7 +86,7 @@ Six granular roles enforced strictly in backend middleware:
 ### 1-Click Dev Launcher
 ```powershell
 # Clone and enter repo
-git clone https://github.com/Miniprojectg17/kyc-doc-platform.git
+git clone https://github.com/Shreyapowar9961/kyc-doc-platform.git
 cd kyc-doc-platform
 
 # Run the automated dev launcher (starts ML Service, Express API, Next.js frontend)

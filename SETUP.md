@@ -34,7 +34,7 @@ Before running the application, ensure the following tools are installed on your
 
 ### Step A: Clone the Repository
 ```powershell
-git clone https://github.com/Miniprojectg17/kyc-doc-platform.git
+git clone https://github.com/Shreyapowar9961/kyc-doc-platform.git
 cd kyc-doc-platform
 ```
 
