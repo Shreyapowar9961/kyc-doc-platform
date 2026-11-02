@@ -47,6 +47,7 @@ qa_run/
 .next/
 out/
 .vercel/
+*.tsbuildinfo
 
 # OS and Editor
 .DS_Store

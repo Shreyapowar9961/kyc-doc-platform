@@ -162,6 +162,7 @@ router.get("/", authenticate, async (req, res, next) => {
 // ─── GET /applications/:id — Detail with documents & checks ──────────────────
 router.get("/:id", authenticate, requireApplicationAccess, (req, res) => {
   const app = req.application;
+  const isAdmin = req.user.role === "ADMIN";
 
   // Enrich documents with verification & mask internal storage paths
   const safeDocuments = app.documents.map((d) => {
@@ -170,12 +171,29 @@ router.get("/:id", authenticate, requireApplicationAccess, (req, res) => {
     if (!verification) {
       verification = verifyDocumentAuthenticity({
         docClass: d.class,
-        text: maskAadhaar(d.text || ""),
+        text: maskPAN(maskAadhaar(d.text || "")),
         confidence: d.confidence,
         ocrChars: d.ocrChars || 0,
         extractedFields,
       });
       extractedFields.verification = verification;
+    }
+
+    if (isAdmin) {
+      // ADMIN access restriction: document content (text) and extracted fields are withheld
+      return {
+        id: d.id,
+        applicationId: d.applicationId,
+        originalName: d.originalName,
+        class: d.class,
+        confidence: d.confidence,
+        outcome: d.outcome,
+        ocrChars: d.ocrChars,
+        fileSize: d.fileSize,
+        mimeType: d.mimeType,
+        uploadDate: d.uploadDate,
+        extractedFields: null,
+      };
     }
 
     return {

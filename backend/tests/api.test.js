@@ -372,6 +372,13 @@ describe("KYC & Loan Platform - Comprehensive API Test Suite", () => {
         .set("Authorization", `Bearer ${auditorToken}`);
       expect(res.status).toBe(403);
     });
+
+    it("Admin attempting to download document file returns 403 (Permission Matrix)", async () => {
+      const res = await request(app)
+        .get("/documents/1/file")
+        .set("Authorization", `Bearer ${adminToken}`);
+      expect(res.status).toBe(403);
+    });
   });
 
   describe("3. Applications Lifecycle & RBAC Matrix", () => {
@@ -485,6 +492,15 @@ describe("KYC & Loan Platform - Comprehensive API Test Suite", () => {
         .set("Authorization", `Bearer ${officerToken}`);
       expect(res.status).toBe(200);
       expect(res.body.application.status).toBe("SUBMITTED");
+    });
+
+    it("Admin viewing application detail receives metadata but extractedFields are filtered -> null", async () => {
+      const res = await request(app)
+        .get(`/applications/${createdAppId}`)
+        .set("Authorization", `Bearer ${adminToken}`);
+      expect(res.status).toBe(200);
+      expect(res.body.application.title).toBe("Home Loan Application");
+      expect(res.body.application.documents[0].extractedFields).toBeNull();
     });
 
     it("Officer records review recommendation APPROVE -> 201, status RECOMMENDED", async () => {

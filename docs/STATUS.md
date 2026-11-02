@@ -39,7 +39,7 @@
 ## 2. Test Verification Summary
 
 ### 2.1 Backend Automated Regression & Security Suite (Jest / Supertest)
-* **Status:** 43 / 43 tests passing across 2 test suites (`tests/api.test.js` [31], `tests/sanitizeSensitiveData.test.js` [12])
+* **Status:** 45 / 45 tests passing across 2 test suites (`tests/api.test.js` [33], `tests/sanitizeSensitiveData.test.js` [12])
 * **Coverage:**
   1. **Authentication & Policy Regressions:**
      - Applicant self-registration succeeds and assigns `APPLICANT` role without exposing password hash.
