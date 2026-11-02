@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { getAdminUsers, updateRole, provisionUser, Role, getCurrentUser } from "@/lib/api";
+import { getAdminUsers, updateRole, updateUserStatus, provisionUser, Role, getCurrentUser } from "@/lib/api";
 import { useRouter } from "next/navigation";
 
 interface AdminUser {
@@ -78,6 +78,27 @@ export default function AdminUsersPage() {
     } catch (err: any) {
       setStatusMsg({
         text: err?.response?.data?.error || "Failed to update role",
+        error: true,
+      });
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleStatusToggle = async (userId: string, currentStatus: boolean) => {
+    setUpdatingId(userId);
+    setStatusMsg(null);
+    try {
+      const updated = await updateUserStatus(userId, !currentStatus);
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, isActive: updated.isActive } : u))
+      );
+      setStatusMsg({
+        text: `User ${updated.email} is now ${updated.isActive ? "Active" : "Disabled"}`,
+      });
+    } catch (err: any) {
+      setStatusMsg({
+        text: err?.response?.data?.error || "Failed to update user status",
         error: true,
       });
     } finally {
@@ -175,15 +196,30 @@ export default function AdminUsersPage() {
                       {new Date(u.createdAt).toLocaleDateString()}
                     </td>
                     <td className="py-3 px-4">
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          u.isActive
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-rose-100 text-rose-700"
-                        }`}
-                      >
-                        {u.isActive ? "Active" : "Disabled"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            u.isActive
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-rose-100 text-rose-700"
+                          }`}
+                        >
+                          {u.isActive ? "Active" : "Disabled"}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={updatingId === u.id}
+                          onClick={() => handleStatusToggle(u.id, u.isActive)}
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded border transition disabled:opacity-50 ${
+                            u.isActive
+                              ? "text-rose-700 hover:bg-rose-50 border-rose-200"
+                              : "text-emerald-700 hover:bg-emerald-50 border-emerald-200"
+                          }`}
+                          title={u.isActive ? "Deactivate user" : "Reactivate user"}
+                        >
+                          {u.isActive ? "Deactivate" : "Activate"}
+                        </button>
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <span className="text-xs font-bold uppercase px-2.5 py-1 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">

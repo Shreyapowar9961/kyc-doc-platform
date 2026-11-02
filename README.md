@@ -1,9 +1,8 @@
 # KYC & Loan Document Platform (BRD v2.0)
 
-[![Build & Tests](https://img.shields.io/badge/tests-22%2F22%20passing-brightgreen)](#)
-[![Macro F1](https://img.shields.io/badge/ML%20Macro%20F1-0.9914-blue)](#)
-[![Extraction Accuracy](https://img.shields.io/badge/PAN%20%2F%20Aadhaar%20Extraction-%3E92%25-teal)](#)
+[![Build & Tests](https://img.shields.io/badge/tests-Jest%2036%20%7C%20Pytest%209%20passing-brightgreen)](#)
 [![RBAC](https://img.shields.io/badge/RBAC-6%20Roles%20Enforced-indigo)](#)
+[![Security](https://img.shields.io/badge/Privacy-Zero%20Raw%20Aadhaar-emerald)](#)
 
 Enterprise loan onboarding and identity document verification platform built strictly according to **BRD v2.0**. Features a 9-class offline machine learning document classifier, automated regex entity extraction, multi-document fuzzy cross-checks, officer review queues, private cloud storage with authenticated streaming, and an append-only audit trail.
 
@@ -44,34 +43,35 @@ The platform follows a three-tier decoupled architecture:
   8. `income_proof`
   9. `other_unknown`
 * **Performance:** **Macro F1 = 0.9914** (BRD threshold $\ge 0.85$), **Hard-Negative Acceptance = 0.0%** ($\le 10\%$). Full report in [`docs/EVAL.md`](docs/EVAL.md).
-* **Outcome Routing:** Low OCR character count ($<30$) routes to `unreadable`. Low confidence ($<0.70$) routes to `needs_review`. High confidence routes to `classified`.
+* **Outcome Routing:** Low OCR character count (<20 chars) routes to `unreadable`. Low confidence (<0.65) routes to `needs_review`. High confidence (>=0.65) routes to `classified`.
 
 ### 2. Privacy & Data Protection Safeguards
-* **Zero Raw Aadhaar:** Raw 12-digit Aadhaar numbers are never persisted in the database, API responses, or logs. Strictly masked format `XXXX-XXXX-1234` is enforced.
-* **Private Storage Streaming:** Replaced legacy static `/uploads` with private Supabase bucket storage (with local fallback). Files are streamed exclusively through authenticated Express route `GET /documents/:id/file` with full ownership verification.
+* **Zero Raw Aadhaar:** Raw 12-digit Aadhaar numbers are never persisted in the database, API responses, or logs. Strictly masked format `XXXX-XXXX-1234` is enforced across all routes and database records.
+* **Private Storage Streaming:** Replaced legacy static `/uploads` with private Supabase bucket storage (with local fallback). Files are streamed exclusively through authenticated Express route `GET /documents/:id/file` with full ownership verification. Auditors and unauthorized roles cannot download raw files.
 * **Credential Masking:** Database connection URLs are masked in logs; sensitive environment variables are strictly protected.
 
 ### 3. Automated Cross-Checks & Severity Flags (Release 2)
-* **Regex Extraction:** PAN (94.8% accuracy), Masked Aadhaar (92.0% accuracy), Full Name, and Date of Birth (DOB).
+* **Regex Extraction:** PAN, Masked Aadhaar, Full Name, and Date of Birth (DOB).
 * **Cross-Document Consistency:**
   - **Fuzzy Name Matching:** Token-sort fuzzy comparison (threshold 80). Discrepancies generate a `CRITICAL` severity check (`NAME_MISMATCH`).
   - **Exact DOB Matching:** Normalized `YYYY-MM-DD` comparison. Mismatches generate a `CRITICAL` severity check (`DOB_MISMATCH`).
   - **Document Completeness:** Lack of minimum identity pairs generates a `WARNING` severity check.
 
 ### 4. Officer Review Workflow & Queues
-* Staff portal (`OFFICER`, `MANAGER`, `FRAUD_ANALYST`) to inspect submitted applications, view high-resolution document previews, inspect severity check flags, and record auditable recommendations:
+* Staff portal (`OFFICER`, `MANAGER`) to inspect submitted applications, view document details, inspect severity check flags, and record auditable recommendations:
   - `APPROVE`
   - `REJECT`
   - `NEED_MORE_DOCUMENTS`
+* `FRAUD_ANALYST` has read-only access to inspect documents and severity flags, but cannot record or submit loan approval recommendations.
 
 ### 5. Role-Based Access Control (RBAC) Matrix
 Six granular roles enforced strictly in backend middleware:
-* `APPLICANT`: Draft and submit loan applications, upload 1–15 documents, view own files.
+* `APPLICANT`: Draft and submit loan applications (minimum 2 documents required), view own files.
 * `OFFICER`: Review submitted applications, inspect flags, make recommendations.
-* `MANAGER`: Higher-tier review access across department queues.
-* `FRAUD_ANALYST`: Specialized review of flagged applications and identity mismatches.
-* `AUDITOR`: Read-only access to system-wide append-only audit trail and document metadata.
-* `ADMIN`: Manage user roles and system privileges.
+* `MANAGER`: Higher-tier review access across department queues, make recommendations.
+* `FRAUD_ANALYST`: Read-only inspection of flagged applications and identity mismatches; cannot submit reviews.
+* `AUDITOR`: Read-only access to system-wide append-only audit trail and document metadata; cannot download raw document files.
+* `ADMIN`: Manage user roles, activate/deactivate users (protected last active admin), and system oversight.
 
 ---
 
@@ -107,13 +107,13 @@ Once running, navigate to:
 cd backend
 npm test
 ```
-*Result: 22 / 22 test suites passed.*
+*Result: 36 / 36 tests passing across 2 test suites.*
 
-### Python Generator & Extraction Tests (Pytest)
+### Python Generator & Microservice Tests (Pytest)
 ```powershell
 pytest tests/ -v
 ```
-*Result: All generator and extraction tests passed.*
+*Result: 9 / 9 tests passing.*
 
 ---
 

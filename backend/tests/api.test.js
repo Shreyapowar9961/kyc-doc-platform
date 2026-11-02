@@ -50,7 +50,17 @@ jest.mock("../lib/prisma", () => ({
       return null;
     }),
     findMany: jest.fn(async () => mockUsers),
-    count: jest.fn(async () => mockUsers.length),
+    count: jest.fn(async (args) => {
+      if (args && args.where) {
+        return mockUsers.filter((u) => {
+          for (const [k, v] of Object.entries(args.where)) {
+            if (u[k] !== v) return false;
+          }
+          return true;
+        }).length;
+      }
+      return mockUsers.length;
+    }),
     update: jest.fn(async ({ where, data }) => {
       const u = mockUsers.find((usr) => usr.id === where.id);
       if (!u) return null;
@@ -185,6 +195,7 @@ describe("KYC & Loan Platform - Comprehensive API Test Suite", () => {
   let officerToken;
   let auditorToken;
   let adminToken;
+  let fraudAnalystToken;
   let applicantAId;
   let applicantBId;
 
@@ -250,6 +261,19 @@ describe("KYC & Loan Platform - Comprehensive API Test Suite", () => {
     };
     mockUsers.push(adminUser);
     adminToken = jwt.sign({}, process.env.JWT_SECRET, { subject: adminUser.id });
+
+    // 6. Create Fraud Analyst User
+    const fraudUser = {
+      id: "usr_fraud",
+      email: "fraud@example.com",
+      name: "Fraud Analyst",
+      passwordHash: officerHash,
+      role: "FRAUD_ANALYST",
+      isActive: true,
+      createdAt: new Date(),
+    };
+    mockUsers.push(fraudUser);
+    fraudAnalystToken = jwt.sign({}, process.env.JWT_SECRET, { subject: fraudUser.id });
 
     // Seed mock document for download testing
     mockDocuments.push({
@@ -399,7 +423,22 @@ describe("KYC & Loan Platform - Comprehensive API Test Suite", () => {
       expect(res.body.documents[0].outcome).toBe("CLASSIFIED");
     });
 
-    it("Applicant submits application -> status becomes SUBMITTED", async () => {
+    it("Applicant submitting with fewer than 2 documents is rejected -> 400", async () => {
+      const res = await request(app)
+        .post(`/applications/${createdAppId}/submit`)
+        .set("Authorization", `Bearer ${applicantAToken}`);
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain("at least 2 documents");
+    });
+
+    it("Applicant uploads second document and submits -> 200, status becomes SUBMITTED", async () => {
+      const pdfBuffer = Buffer.from("%PDF-1.4\nsecond doc");
+      const upRes = await request(app)
+        .post(`/applications/${createdAppId}/documents`)
+        .set("Authorization", `Bearer ${applicantAToken}`)
+        .attach("files", pdfBuffer, "salary_slip.pdf");
+      expect(upRes.status).toBe(201);
+
       const res = await request(app)
         .post(`/applications/${createdAppId}/submit`)
         .set("Authorization", `Bearer ${applicantAToken}`);
@@ -448,6 +487,69 @@ describe("KYC & Loan Platform - Comprehensive API Test Suite", () => {
         .get("/admin/audit")
         .set("Authorization", `Bearer ${applicantAToken}`);
       expect(res.status).toBe(403);
+    });
+
+    it("F9: Fraud Analyst cannot submit review recommendation -> 403", async () => {
+      const res = await request(app)
+        .post(`/applications/${createdAppId}/review`)
+        .set("Authorization", `Bearer ${fraudAnalystToken}`)
+        .send({ recommendation: "APPROVE", reason: "Fraud check looks fine" });
+      expect(res.status).toBe(403);
+    });
+
+    it("F3: Demoting last active ADMIN is blocked -> 400", async () => {
+      const res = await request(app)
+        .patch("/admin/users/usr_admin/role")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ role: "OFFICER" });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain("last active ADMIN");
+    });
+
+    it("F3: Deactivating last active ADMIN is blocked -> 400", async () => {
+      const res = await request(app)
+        .patch("/admin/users/usr_admin/status")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ isActive: false });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain("last active ADMIN");
+    });
+
+    it("F7: Admin can deactivate and reactivate non-admin user -> 200", async () => {
+      // Deactivate
+      const deactRes = await request(app)
+        .patch("/admin/users/usr_fraud/status")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ isActive: false });
+      expect(deactRes.status).toBe(200);
+      expect(deactRes.body.user.isActive).toBe(false);
+
+      // Reactivate
+      const reactRes = await request(app)
+        .patch("/admin/users/usr_fraud/status")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ isActive: true });
+      expect(reactRes.status).toBe(200);
+      expect(reactRes.body.user.isActive).toBe(true);
+    });
+
+    it("F4: Oversized document upload returns 413 instead of 500", async () => {
+      // Create a draft application
+      const appRes = await request(app)
+        .post("/applications")
+        .set("Authorization", `Bearer ${applicantAToken}`)
+        .send({ title: "Oversized Test App" });
+      const testAppId = appRes.body.application.id;
+
+      // 11MB buffer (exceeds default 10MB limit)
+      const oversizedBuf = Buffer.alloc(11 * 1024 * 1024, "%PDF-1.4\nlarge-content");
+      const uploadRes = await request(app)
+        .post(`/applications/${testAppId}/documents`)
+        .set("Authorization", `Bearer ${applicantAToken}`)
+        .attach("files", oversizedBuf, "oversized.pdf");
+
+      expect(uploadRes.status).toBe(413);
+      expect(uploadRes.body.error).toMatch(/too large/i);
     });
   });
 });

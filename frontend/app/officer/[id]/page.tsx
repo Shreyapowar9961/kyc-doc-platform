@@ -102,6 +102,8 @@ export default function OfficerReviewDetailPage({ params }: { params: Promise<{ 
   const checks = application.checks || [];
   const reviews = application.reviews || [];
   const dossier = application.dossierVerification;
+  const currentUser = getCurrentUser();
+  const canReview = Boolean(currentUser && ["OFFICER", "MANAGER"].includes(currentUser.role));
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
@@ -375,48 +377,54 @@ export default function OfficerReviewDetailPage({ params }: { params: Promise<{ 
         </div>
       )}
 
-      {/* Record Review Recommendation Form */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-        <h2 className="text-base font-bold text-slate-900 mb-4">Record Officer Recommendation</h2>
-        <form onSubmit={handleReviewSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Decision
-            </label>
-            <select
-              value={recommendation}
-              onChange={(e) => setRecommendation(e.target.value as any)}
-              className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+      {/* Record Review Recommendation Form (OFFICER and MANAGER only, FRAUD_ANALYST read-only) */}
+      {canReview ? (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+          <h2 className="text-base font-bold text-slate-900 mb-4">Record Officer Recommendation</h2>
+          <form onSubmit={handleReviewSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                Decision
+              </label>
+              <select
+                value={recommendation}
+                onChange={(e) => setRecommendation(e.target.value as any)}
+                className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+              >
+                <option value="APPROVE">APPROVE — Loan documents verified and authentic</option>
+                <option value="REJECT">REJECT — High fraud risk or unverified documents</option>
+                <option value="NEED_MORE_DOCUMENTS">NEED_MORE_DOCUMENTS — Additional KYC verification required</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                Officer Notes &amp; Rationale
+              </label>
+              <textarea
+                required
+                rows={4}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="e.g. Identity documents cross-checked against Income Tax database and Aadhaar masked format. Income proof verified against salary slips."
+                className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-6 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition shadow disabled:opacity-50"
             >
-              <option value="APPROVE">APPROVE — Loan documents verified and authentic</option>
-              <option value="REJECT">REJECT — High fraud risk or unverified documents</option>
-              <option value="NEED_MORE_DOCUMENTS">NEED_MORE_DOCUMENTS — Additional KYC verification required</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Officer Notes &amp; Rationale
-            </label>
-            <textarea
-              required
-              rows={4}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g. Identity documents cross-checked against Income Tax database and Aadhaar masked format. Income proof verified against salary slips."
-              className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="px-6 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition shadow disabled:opacity-50"
-          >
-            {submitting ? "Saving Recommendation..." : "Submit Recommendation"}
-          </button>
-        </form>
-      </div>
+              {submitting ? "Saving Recommendation..." : "Submit Recommendation"}
+            </button>
+          </form>
+        </div>
+      ) : (
+        <div className="bg-slate-50 rounded-xl border border-slate-200 p-5 text-center text-xs text-slate-500">
+          <span className="font-semibold text-slate-700">Investigation View (Read-Only):</span> As a {currentUser?.role || "Fraud Analyst"}, you can inspect application files and cross-check flags. Recording official loan approval recommendations is reserved exclusively for credit officers and managers.
+        </div>
+      )}
     </div>
   );
 }

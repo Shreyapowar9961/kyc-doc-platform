@@ -22,6 +22,7 @@ const storage = require("../lib/storage");
 const mlClient = require("../lib/mlClient");
 const { performCrossChecks } = require("../lib/crossCheck");
 const { verifyDocumentAuthenticity } = require("../lib/verification");
+const { maskAadhaar, sanitizeSensitiveData } = require("../utils/sanitizeSensitiveData");
 
 const router = express.Router();
 
@@ -132,19 +133,22 @@ router.get("/", authenticate, async (req, res, next) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    const [applications, total] = await Promise.all([
-      prisma.application.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-        include: {
-          applicant: { select: { id: true, name: true, email: true } },
-          _count: { select: { documents: true, checks: true, reviews: true } },
+    const applications = await prisma.application.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+      include: {
+        applicant: { select: { id: true, name: true, email: true } },
+        reviews: {
+          select: { id: true, recommendation: true, reason: true, createdAt: true },
+          orderBy: { createdAt: "desc" },
+          take: 1,
         },
-      }),
-      prisma.application.count({ where }),
-    ]);
+        _count: { select: { documents: true, checks: true, reviews: true } },
+      },
+    });
+    const total = await prisma.application.count({ where });
 
     res.json({
       applications,
@@ -161,12 +165,12 @@ router.get("/:id", authenticate, requireApplicationAccess, (req, res) => {
 
   // Enrich documents with verification & mask internal storage paths
   const safeDocuments = app.documents.map((d) => {
-    let extractedFields = (d.extractedFields && typeof d.extractedFields === "object") ? { ...d.extractedFields } : {};
+    let extractedFields = (d.extractedFields && typeof d.extractedFields === "object") ? sanitizeSensitiveData(d.extractedFields) : {};
     let verification = extractedFields.verification;
     if (!verification) {
       verification = verifyDocumentAuthenticity({
         docClass: d.class,
-        text: d.text || "",
+        text: maskAadhaar(d.text || ""),
         confidence: d.confidence,
         ocrChars: d.ocrChars || 0,
         extractedFields,
@@ -222,7 +226,18 @@ router.post(
   authenticate,
   requireApplicationAccess,
   requireDraftOwner,
-  upload.array("files", 15),
+  (req, res, next) => {
+    upload.array("files", 15)(req, res, (err) => {
+      if (err) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          err.status = 413;
+          err.message = `File too large. Maximum allowed file size is ${MAX_UPLOAD_MB}MB.`;
+        }
+        return next(err);
+      }
+      next();
+    });
+  },
   async (req, res, next) => {
     try {
       if (!req.files || req.files.length === 0) {
@@ -265,14 +280,18 @@ router.post(
           } catch (_) {}
         }
 
+        // Sanitize OCR text BEFORE writing to database or verification
+        const sanitizedText = maskAadhaar(mlResult.text || "");
+        const sanitizedExtracted = sanitizeSensitiveData(extracted);
+
         const verification = verifyDocumentAuthenticity({
           docClass: mlResult.class || "other_unknown",
-          text: mlResult.text || "",
+          text: sanitizedText,
           confidence: mlResult.confidence || 0,
           ocrChars: mlResult.ocr_chars || 0,
-          extractedFields: extracted,
+          extractedFields: sanitizedExtracted,
         });
-        extracted.verification = verification;
+        sanitizedExtracted.verification = verification;
 
         // 4. Save to Private Storage
         const fileUuid = uuidv4();
@@ -289,8 +308,8 @@ router.post(
             confidence: mlResult.confidence || 0,
             outcome: mlResult.outcome || "NEEDS_REVIEW",
             ocrChars: mlResult.ocr_chars || 0,
-            text: mlResult.text || "",
-            extractedFields: Object.keys(extracted).length > 0 ? extracted : undefined,
+            text: sanitizedText,
+            extractedFields: Object.keys(sanitizedExtracted).length > 0 ? sanitizedExtracted : undefined,
             fileSize: file.size,
             mimeType: file.mimetype,
             userId: req.user.id,
@@ -375,8 +394,8 @@ router.post(
   async (req, res, next) => {
     try {
       const app = req.application;
-      if (!app.documents || app.documents.length === 0) {
-        return res.status(400).json({ error: "Application must contain at least one document to submit" });
+      if (!app.documents || app.documents.length < 2) {
+        return res.status(400).json({ error: "Application must contain at least 2 documents to submit for verification" });
       }
 
       // 1. Update application status to SUBMITTED

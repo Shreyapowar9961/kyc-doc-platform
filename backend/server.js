@@ -1,7 +1,8 @@
 // backend/server.js
 // KYC & Loan Document Platform — Express Server
 
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -63,10 +64,22 @@ app.use((req, res) => {
 
 // Global error handler (never leaks server stack traces in production)
 app.use((err, req, res, next) => {
-  const status = err.status || 500;
+  let status = err.status || 500;
+  let message = err.message || "Internal server error";
+
+  // Handle Multer file limit errors (F4)
+  if (err.name === "MulterError" || err.code === "LIMIT_FILE_SIZE") {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      status = 413;
+      message = "File too large. Maximum allowed file size exceeded.";
+    } else {
+      status = 400;
+    }
+  }
+
   console.error("❌ API Error:", err.message);
   res.status(status).json({
-    error: err.message || "Internal server error",
+    error: message,
     ...(err.details && { details: err.details }),
     ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
   });

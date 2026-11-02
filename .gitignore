@@ -41,6 +41,7 @@ build/
 ml/models/*.joblib
 ml/models/*.pkl
 data/kyc/
+qa_run/
 
 # Next.js Build
 .next/
