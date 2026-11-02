@@ -87,10 +87,10 @@ function requireDraftOwner(req, res, next) {
   const user = req.user;
 
   const isOwner = req.application.applicantId === user.id;
-  const isAllowed = ["APPLICANT", "ADMIN"].includes(user.role);
+  const isApplicant = user.role === "APPLICANT";
 
-  if (!isAllowed || (!isOwner && user.role !== "ADMIN")) {
-    return sendError(res, 403, "Only the applicant or administrator can modify this application");
+  if (!isApplicant || !isOwner) {
+    return sendError(res, 403, "Only the applicant owner can modify this application");
   }
 
   if (req.application.status !== "DRAFT") {

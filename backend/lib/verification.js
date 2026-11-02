@@ -95,7 +95,10 @@ function verifyDocumentAuthenticity({ docClass, text = "", confidence = 0.0, ocr
   switch (docClass) {
     case "pan_card": {
       const hasGovt = upperText.includes("INCOME TAX") || upperText.includes("GOVT") || upperText.includes("INDIA");
-      const hasPAN = Boolean(extractedFields.pan && /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(extractedFields.pan));
+      const hasPAN = Boolean(
+        extractedFields.pan &&
+        (/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(extractedFields.pan) || /^[A-Z]{5}\*{4}[A-Z]$/.test(extractedFields.pan))
+      );
 
       if (hasGovt && hasPAN) {
         classPassed = true;

@@ -1,6 +1,6 @@
 # KYC & Loan Document Platform (BRD v2.0)
 
-[![Build & Tests](https://img.shields.io/badge/tests-Jest%2036%20%7C%20Pytest%209%20passing-brightgreen)](#)
+[![Build & Tests](https://img.shields.io/badge/tests-Jest%2043%20%7C%20Pytest%209%20passing-brightgreen)](#)
 [![RBAC](https://img.shields.io/badge/RBAC-6%20Roles%20Enforced-indigo)](#)
 [![Security](https://img.shields.io/badge/Privacy-Zero%20Raw%20Aadhaar-emerald)](#)
 
@@ -125,7 +125,7 @@ pytest tests/ -v
 │   ├── middleware/           # JWT Auth & 6-Role RBAC Ownership
 │   ├── prisma/               # Schema & Additive Migration (add_applications)
 │   ├── routes/               # /auth, /applications, /documents, /history, /admin
-│   └── tests/                # 22-test automated regression & security suite
+│   └── tests/                # 43-test automated regression & security suite (Jest)
 ├── frontend/                 # Next.js 16 (React 18, Tailwind CSS, TypeScript)
 │   ├── app/                  # App Router: /, /login, /register, /applications, /officer, /history, /admin
 │   ├── components/           # Role-based Header and UI elements

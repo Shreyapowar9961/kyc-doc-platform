@@ -293,7 +293,11 @@ export default function OfficerReviewDetailPage({ params }: { params: Promise<{ 
                         {doc.extractedFields.pan && (
                           <div>
                             <span className="text-slate-400 block text-[10px]">PAN</span>
-                            <strong className="text-slate-900 font-mono">{doc.extractedFields.pan}</strong>
+                            <strong className="text-slate-900 font-mono">
+                              {typeof doc.extractedFields.pan === "string" && doc.extractedFields.pan.length === 10
+                                ? `${doc.extractedFields.pan.slice(0, 5)}****${doc.extractedFields.pan.slice(9)}`
+                                : doc.extractedFields.pan}
+                            </strong>
                           </div>
                         )}
                         {doc.extractedFields.aadhaar_masked && (

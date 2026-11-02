@@ -387,6 +387,14 @@ describe("KYC & Loan Platform - Comprehensive API Test Suite", () => {
       createdAppId = res.body.application.id;
     });
 
+    it("Admin cannot create application -> 403", async () => {
+      const res = await request(app)
+        .post("/applications")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ title: "Admin Illegitimate App" });
+      expect(res.status).toBe(403);
+    });
+
     it("Applicant B cannot view Applicant A's application -> 404 (Isolation)", async () => {
       const res = await request(app)
         .get(`/applications/${createdAppId}`)
@@ -421,6 +429,22 @@ describe("KYC & Loan Platform - Comprehensive API Test Suite", () => {
       expect(res.body.documents).toHaveLength(1);
       expect(res.body.documents[0].class).toBe("pan_card");
       expect(res.body.documents[0].outcome).toBe("CLASSIFIED");
+    });
+
+    it("Admin cannot upload documents to application -> 403", async () => {
+      const pdfBuffer = Buffer.from("%PDF-1.4\nadmin upload");
+      const res = await request(app)
+        .post(`/applications/${createdAppId}/documents`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .attach("files", pdfBuffer, "admin_doc.pdf");
+      expect(res.status).toBe(403);
+    });
+
+    it("Admin cannot delete document from application -> 403", async () => {
+      const res = await request(app)
+        .delete(`/applications/${createdAppId}/documents/mock_doc_id`)
+        .set("Authorization", `Bearer ${adminToken}`);
+      expect(res.status).toBe(403);
     });
 
     it("Applicant submitting with fewer than 2 documents is rejected -> 400", async () => {

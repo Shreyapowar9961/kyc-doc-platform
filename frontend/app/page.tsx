@@ -127,7 +127,7 @@ export default function HomePage() {
           </div>
           <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
             <div className="text-emerald-400 font-black text-xl">Private</div>
-            <div className="text-xs text-slate-400 mt-1">Encrypted Storage Isolation</div>
+            <div className="text-xs text-slate-400 mt-1">Authenticated Document Storage</div>
           </div>
           <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
             <div className="text-amber-400 font-black text-xl">Multi-Factor</div>

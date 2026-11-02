@@ -2,6 +2,8 @@
 const {
   maskAadhaar,
   maskAadhaarInText,
+  maskPAN,
+  hasRawPAN,
   sanitizeSensitiveData,
   hasRawAadhaar,
 } = require("../utils/sanitizeSensitiveData");
@@ -100,6 +102,34 @@ describe("Sensitive Data Sanitization & Aadhaar Masking", () => {
         "UIDAI Aadhaar XXXX-XXXX-7777 verified"
       );
       expect(sanitized.status).toBe("PENDING");
+    });
+
+    test("masks PAN numbers in text and object properties", () => {
+      const data = {
+        pan: "ABCDE1234F",
+        summary: "PAN ABCDE1234F verified against ITD database",
+      };
+      const result = sanitizeSensitiveData(data);
+      expect(result.pan).toBe("ABCDE****F");
+      expect(result.summary).toBe("PAN ABCDE****F verified against ITD database");
+    });
+  });
+
+  describe("maskPAN / hasRawPAN", () => {
+    test("masks standard 10-char PAN correctly to ABCDE****F", () => {
+      expect(maskPAN("ABCDE1234F")).toBe("ABCDE****F");
+      expect(hasRawPAN("ABCDE1234F")).toBe(true);
+      expect(hasRawPAN("ABCDE****F")).toBe(false);
+    });
+
+    test("masks multiple PANs in unstructured text", () => {
+      const text = "Found PAN: ABCDE1234F and another: FGHIJ5678K in document";
+      expect(maskPAN(text)).toBe("Found PAN: ABCDE****F and another: FGHIJ****K in document");
+    });
+
+    test("preserves non-PAN alphabetic or alphanumeric strings", () => {
+      expect(maskPAN("ABCDEF1234")).toBe("ABCDEF1234");
+      expect(maskPAN("1234ABCDE")).toBe("1234ABCDE");
     });
   });
 });

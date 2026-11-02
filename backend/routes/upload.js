@@ -9,7 +9,7 @@ const fs = require("fs");
 const { spawn } = require("child_process");
 const { PrismaClient } = require("@prisma/client");
 const { v4: uuidv4 } = require("uuid");
-const { maskAadhaar } = require("../utils/sanitizeSensitiveData");
+const { maskAadhaar, maskPAN } = require("../utils/sanitizeSensitiveData");
 
 const prisma = new PrismaClient();
 
@@ -166,7 +166,7 @@ router.post("/classify", upload.single("file"), async (req, res, next) => {
         path: relativePath,
         class: docClass,
         confidence,
-        text: maskAadhaar(text.slice(0, 10000)),
+        text: maskPAN(maskAadhaar(text.slice(0, 10000))),
         embedding: JSON.stringify(embeddingArr),
         fileSize: req.file.size,
         pageCount,

@@ -39,7 +39,7 @@
 ## 2. Test Verification Summary
 
 ### 2.1 Backend Automated Regression & Security Suite (Jest / Supertest)
-* **Status:** 36 / 36 tests passing across 2 test suites (`tests/api.test.js`, `tests/sanitizeSensitiveData.test.js`)
+* **Status:** 43 / 43 tests passing across 2 test suites (`tests/api.test.js` [31], `tests/sanitizeSensitiveData.test.js` [12])
 * **Coverage:**
   1. **Authentication & Policy Regressions:**
      - Applicant self-registration succeeds and assigns `APPLICANT` role without exposing password hash.
@@ -54,14 +54,17 @@
   3. **Applications Lifecycle & RBAC Matrix:**
      - Horizontal isolation: Applicant B cannot access Applicant A's application (`HTTP 404`).
      - Officer blocked from viewing DRAFT applications (`HTTP 403`).
+     - Admin blocked from creating applications, uploading documents, or deleting documents (`HTTP 403`).
      - Malicious / invalid file extensions rejected (`HTTP 415 Unsupported Media Type`).
      - Multi-document submission: Submitting with < 2 documents rejected with `HTTP 400`.
      - Submission with >= 2 documents transitions status to `SUBMITTED`.
      - Post-submission upload blocked (`HTTP 409 Conflict`).
      - Review recommendations (`APPROVE`, `REJECT`, `NEED_MORE_DOCUMENTS`) restricted to `OFFICER` and `MANAGER`.
      - Auditor granted read access to audit trail (`HTTP 200`), applicant blocked (`HTTP 403`).
+     - Last active Admin cannot be demoted or deactivated (`HTTP 400` with audit event).
   4. **Sensitive Data Sanitization:**
      - Aadhaar masking across space-separated, hyphen-separated, and continuous 12-digit formats.
+     - PAN masking across text and extracted fields (`ABCDE****F`).
      - Lookaround protection preserving mobile numbers, account numbers, and credit cards.
 
 ### 2.2 Python ML & Generator Suite (Pytest)

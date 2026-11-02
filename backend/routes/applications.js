@@ -22,7 +22,7 @@ const storage = require("../lib/storage");
 const mlClient = require("../lib/mlClient");
 const { performCrossChecks } = require("../lib/crossCheck");
 const { verifyDocumentAuthenticity } = require("../lib/verification");
-const { maskAadhaar, sanitizeSensitiveData } = require("../utils/sanitizeSensitiveData");
+const { maskAadhaar, maskPAN, sanitizeSensitiveData } = require("../utils/sanitizeSensitiveData");
 
 const router = express.Router();
 
@@ -88,7 +88,7 @@ function validateMagicBytes(buffer, ext) {
 }
 
 // ─── POST /applications — Create a new DRAFT application ─────────────────────
-router.post("/", authenticate, requireRole("APPLICANT", "ADMIN"), async (req, res, next) => {
+router.post("/", authenticate, requireRole("APPLICANT"), async (req, res, next) => {
   try {
     const title = req.body.title?.trim() || `Loan Application ${new Date().toLocaleDateString()}`;
 
@@ -281,7 +281,7 @@ router.post(
         }
 
         // Sanitize OCR text BEFORE writing to database or verification
-        const sanitizedText = maskAadhaar(mlResult.text || "");
+        const sanitizedText = maskPAN(maskAadhaar(mlResult.text || ""));
         const sanitizedExtracted = sanitizeSensitiveData(extracted);
 
         const verification = verifyDocumentAuthenticity({

@@ -21,12 +21,34 @@ const AADHAAR_SPACED_REGEX = /(?<!\d)(?<!\d\s+)(\d{4})\s+(\d{4})\s+(\d{4})(?!\s*
 const AADHAAR_HYPHEN_REGEX = /(?<!\d)(?<!\d-)(\d{4})-(\d{4})-(\d{4})(?!-\d)(?!\d)/g;
 const AADHAAR_MIXED_REGEX = /(?<!\d)(?<!\d[ -])(\d{4})[ -](\d{4})[ -](\d{4})(?![ -]\d)(?!\d)/g;
 const AADHAAR_CONTINUOUS_REGEX = /(?<!\d)\d{8}(\d{4})(?!\d)/g;
+const PAN_RAW_REGEX = /\b([A-Z]{5})\d{4}([A-Z])\b/g;
 
 // Detection patterns (stateless non-global to prevent regex.test() lastIndex state bugs)
 const AADHAAR_SPACED_TEST = /(?<!\d)(?<!\d\s+)(\d{4})\s+(\d{4})\s+(\d{4})(?!\s*\d)(?!\d)/;
 const AADHAAR_HYPHEN_TEST = /(?<!\d)(?<!\d-)(\d{4})-(\d{4})-(\d{4})(?!-\d)(?!\d)/;
 const AADHAAR_MIXED_TEST = /(?<!\d)(?<!\d[ -])(\d{4})[ -](\d{4})[ -](\d{4})(?![ -]\d)(?!\d)/;
 const AADHAAR_CONTINUOUS_TEST = /(?<!\d)\d{8}(\d{4})(?!\d)/;
+const PAN_RAW_TEST = /\b([A-Z]{5})\d{4}([A-Z])\b/;
+
+/**
+ * Checks if a string contains any unmasked PAN (e.g. ABCDE1234F).
+ * @param {string} text
+ * @returns {boolean}
+ */
+function hasRawPAN(text) {
+  if (typeof text !== "string" || !text) return false;
+  return PAN_RAW_TEST.test(text);
+}
+
+/**
+ * Masks 10-character PAN in text, preserving first 5 and last character: "ABCDE1234F" -> "ABCDE****F"
+ * @param {string} text
+ * @returns {string}
+ */
+function maskPAN(text) {
+  if (typeof text !== "string" || !text) return text;
+  return text.replace(PAN_RAW_REGEX, "$1****$2");
+}
 
 /**
  * Checks if a string contains any unmasked 12-digit Aadhaar number.
@@ -81,7 +103,7 @@ function sanitizeSensitiveData(input) {
   }
 
   if (typeof input === "string") {
-    return maskAadhaar(input);
+    return maskPAN(maskAadhaar(input));
   }
 
   if (Array.isArray(input)) {
@@ -97,6 +119,12 @@ function sanitizeSensitiveData(input) {
         /^\d{12}$/.test(value)
       ) {
         output[key] = `XXXX-XXXX-${value.slice(-4)}`;
+      } else if (
+        key.toLowerCase().includes("pan") &&
+        typeof value === "string" &&
+        hasRawPAN(value)
+      ) {
+        output[key] = maskPAN(value);
       } else {
         output[key] = sanitizeSensitiveData(value);
       }
@@ -110,6 +138,8 @@ function sanitizeSensitiveData(input) {
 module.exports = {
   maskAadhaar,
   maskAadhaarInText: maskAadhaar,
+  maskPAN,
+  hasRawPAN,
   sanitizeSensitiveData,
   hasRawAadhaar,
 };

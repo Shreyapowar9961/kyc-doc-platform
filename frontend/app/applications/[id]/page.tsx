@@ -512,7 +512,11 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
                       {doc.extractedFields.pan && (
                         <span className="flex items-center gap-1">
                           <span className="text-slate-400">PAN:</span>
-                          <strong className="text-slate-900 font-mono">{doc.extractedFields.pan}</strong>
+                          <strong className="text-slate-900 font-mono">
+                            {typeof doc.extractedFields.pan === "string" && doc.extractedFields.pan.length === 10
+                              ? `${doc.extractedFields.pan.slice(0, 5)}****${doc.extractedFields.pan.slice(9)}`
+                              : doc.extractedFields.pan}
+                          </strong>
                           <span className="text-emerald-500 text-xs">&check;</span>
                         </span>
                       )}
