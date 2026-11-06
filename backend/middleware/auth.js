@@ -5,6 +5,15 @@ function sendError(res, status, message) {
   return res.status(status).json({ error: message });
 }
 
+// In-memory cache for verified tokens to eliminate DB connection pool contention
+const userCache = new Map();
+const USER_CACHE_TTL_MS = 30000; // 30 seconds
+
+function invalidateUserCache(userId) {
+  if (userId) userCache.delete(userId);
+  else userCache.clear();
+}
+
 // Reads "Authorization: Bearer <token>". Kept in one function so a cookie
 // can be accepted later without changing the rest of the code.
 function getToken(req) {
@@ -38,10 +47,21 @@ async function authenticate(req, res, next) {
 
     if (!payload.sub) return sendError(res, 401, "Invalid token");
 
-    const user = await prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: { id: true, email: true, name: true, role: true, isActive: true },
-    });
+    // Check fast in-memory cache first
+    let user;
+    const now = Date.now();
+    const cached = userCache.get(payload.sub);
+    if (cached && now - cached.cachedAt < USER_CACHE_TTL_MS) {
+      user = cached.user;
+    } else {
+      user = await prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: { id: true, email: true, name: true, role: true, isActive: true },
+      });
+      if (user && user.isActive) {
+        userCache.set(payload.sub, { user, cachedAt: now });
+      }
+    }
 
     // A disabled account stops working immediately, even with a valid token.
     if (!user || !user.isActive) {
@@ -51,6 +71,10 @@ async function authenticate(req, res, next) {
     req.user = user;
     next();
   } catch (err) {
+    if (err.message && err.message.includes("Timed out fetching a new connection")) {
+      console.error("⚠️ Database connection pool busy (cold start in progress):", err.message);
+      return sendError(res, 503, "Database is currently warming up. Please refresh in a few seconds.");
+    }
     next(err);
   }
 }
@@ -66,4 +90,4 @@ function allowRoles(...roles) {
   };
 }
 
-module.exports = { authenticate, allowRoles };
+module.exports = { authenticate, allowRoles, invalidateUserCache };

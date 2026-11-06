@@ -294,6 +294,11 @@ export async function updateRole(userId: string, role: Role) {
   return res.data.user;
 }
 
+export async function updateUserStatus(userId: string, isActive: boolean) {
+  const res = await api.patch(`/admin/users/${userId}/status`, { isActive });
+  return res.data.user;
+}
+
 export async function getAdminAudit(params: any = {}) {
   const res = await api.get("/admin/audit", { params });
   return res.data;

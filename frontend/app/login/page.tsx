@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { login, setToken } from "../../lib/api";
 
 type LoginPortal = "APPLICANT" | "STAFF";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered");
@@ -200,5 +200,13 @@ export default function LoginPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

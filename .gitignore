@@ -41,11 +41,13 @@ build/
 ml/models/*.joblib
 ml/models/*.pkl
 data/kyc/
+qa_run/
 
 # Next.js Build
 .next/
 out/
 .vercel/
+*.tsbuildinfo
 
 # OS and Editor
 .DS_Store

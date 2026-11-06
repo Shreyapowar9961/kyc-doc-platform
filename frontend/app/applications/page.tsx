@@ -121,7 +121,27 @@ export default function ApplicationsPage() {
                   >
                     {app.status}
                   </span>
+                  {app.reviews && app.reviews.length > 0 && (
+                    <span
+                      className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                        app.reviews[0].recommendation === "APPROVE"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : app.reviews[0].recommendation === "NEED_MORE_DOCUMENTS"
+                          ? "bg-amber-50 text-amber-700 border-amber-200"
+                          : "bg-rose-50 text-rose-700 border-rose-200"
+                      }`}
+                    >
+                      {app.reviews[0].recommendation === "APPROVE" && "✓ Recommended for Approval"}
+                      {app.reviews[0].recommendation === "NEED_MORE_DOCUMENTS" && "⚠️ Action: Documents Needed"}
+                      {app.reviews[0].recommendation === "REJECT" && "✕ Declined by Officer"}
+                    </span>
+                  )}
                 </div>
+                {app.reviews && app.reviews.length > 0 && (
+                  <p className="text-xs text-slate-600 italic mt-1 line-clamp-1">
+                    Officer Note: &ldquo;{app.reviews[0].reason}&rdquo;
+                  </p>
+                )}
                 <div className="flex items-center gap-4 text-xs text-slate-500 mt-2">
                   <span>Created: {new Date(app.createdAt).toLocaleDateString()}</span>
                   <span>•</span>

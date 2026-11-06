@@ -9,13 +9,17 @@ const bcrypt = require("bcryptjs");
 const { z } = require("zod");
 const prisma = require("../lib/prisma");
 const { logAudit } = require("../lib/audit");
-const { authenticate } = require("../middleware/auth");
+const { authenticate, invalidateUserCache } = require("../middleware/auth");
 const { requireRole } = require("../middleware/ownership");
 
 const router = express.Router();
 
 const roleSchema = z.object({
   role: z.enum(["APPLICANT", "OFFICER", "MANAGER", "FRAUD_ANALYST", "AUDITOR", "ADMIN"]),
+});
+
+const statusSchema = z.object({
+  isActive: z.boolean(),
 });
 
 const provisionUserSchema = z.object({
@@ -109,16 +113,85 @@ router.patch("/users/:id/role", authenticate, requireRole("ADMIN"), async (req, 
 
     const previousRole = targetUser.role;
 
+    // F3: Block demoting the last active ADMIN with an audit entry
+    if (role !== "ADMIN" && targetUser.role === "ADMIN" && targetUser.isActive) {
+      const activeAdminCount = await prisma.user.count({
+        where: { role: "ADMIN", isActive: true },
+      });
+      if (activeAdminCount <= 1) {
+        await logAudit({
+          userId: req.user.id,
+          action: "LAST_ADMIN_PROTECTION_BLOCKED",
+          details: { targetUserId, attemptedAction: "DEMOTE", currentRole: targetUser.role, targetRole: role },
+        });
+        return res.status(400).json({
+          error: "Cannot demote the last active ADMIN. At least one active administrator must remain.",
+        });
+      }
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: targetUserId },
       data: { role },
       select: { id: true, email: true, name: true, role: true, isActive: true },
     });
 
+    invalidateUserCache(targetUserId);
+
     await logAudit({
       userId: req.user.id,
       action: "ROLE_CHANGE",
       details: { targetUserId, previousRole, newRole: role },
+    });
+
+    res.json({ user: updatedUser });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── PATCH /admin/users/:id/status — Deactivate / Reactivate user (ADMIN only) ──
+router.patch("/users/:id/status", authenticate, requireRole("ADMIN"), async (req, res, next) => {
+  try {
+    const targetUserId = req.params.id;
+    const parsed = statusSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid status value", details: parsed.error.issues });
+    }
+
+    const { isActive } = parsed.data;
+    const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!targetUser) return res.status(404).json({ error: "User not found" });
+
+    // F3: Block deactivating the last active ADMIN with an audit entry
+    if (!isActive && targetUser.role === "ADMIN" && targetUser.isActive) {
+      const activeAdminCount = await prisma.user.count({
+        where: { role: "ADMIN", isActive: true },
+      });
+      if (activeAdminCount <= 1) {
+        await logAudit({
+          userId: req.user.id,
+          action: "LAST_ADMIN_PROTECTION_BLOCKED",
+          details: { targetUserId, attemptedAction: "DEACTIVATE", role: targetUser.role },
+        });
+        return res.status(400).json({
+          error: "Cannot deactivate the last active ADMIN. At least one active administrator must remain.",
+        });
+      }
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: targetUserId },
+      data: { isActive },
+      select: { id: true, email: true, name: true, role: true, isActive: true },
+    });
+
+    invalidateUserCache(targetUserId);
+
+    await logAudit({
+      userId: req.user.id,
+      action: isActive ? "USER_REACTIVATE" : "USER_DEACTIVATE",
+      details: { targetUserId, email: targetUser.email, role: targetUser.role, isActive },
     });
 
     res.json({ user: updatedUser });

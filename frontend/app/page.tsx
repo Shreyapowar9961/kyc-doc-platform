@@ -122,16 +122,16 @@ export default function HomePage() {
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
           <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
-            <div className="text-indigo-400 font-black text-xl">99.1%</div>
-            <div className="text-xs text-slate-400 mt-1">Classifier Macro F1</div>
+            <div className="text-indigo-400 font-black text-xl">9 Classes</div>
+            <div className="text-xs text-slate-400 mt-1">Supported KYC Documents</div>
           </div>
           <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
-            <div className="text-emerald-400 font-black text-xl">0%</div>
-            <div className="text-xs text-slate-400 mt-1">Hard-Negative Acceptance</div>
+            <div className="text-emerald-400 font-black text-xl">Private</div>
+            <div className="text-xs text-slate-400 mt-1">Authenticated Document Storage</div>
           </div>
           <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
-            <div className="text-amber-400 font-black text-xl">&gt;92%</div>
-            <div className="text-xs text-slate-400 mt-1">Regex Extraction Rate</div>
+            <div className="text-amber-400 font-black text-xl">Multi-Factor</div>
+            <div className="text-xs text-slate-400 mt-1">Automated Cross-Checks</div>
           </div>
           <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
             <div className="text-sky-400 font-black text-xl">6 Roles</div>

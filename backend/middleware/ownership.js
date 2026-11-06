@@ -44,7 +44,8 @@ async function requireApplicationAccess(req, res, next) {
             reviewer: {
               select: { id: true, name: true, email: true, role: true }
             }
-          }
+          },
+          orderBy: { createdAt: "desc" },
         },
         applicant: {
           select: { id: true, name: true, email: true }
@@ -86,13 +87,19 @@ function requireDraftOwner(req, res, next) {
   const user = req.user;
 
   const isOwner = req.application.applicantId === user.id;
-  const isAllowed = ["APPLICANT", "ADMIN"].includes(user.role);
+  const isApplicant = user.role === "APPLICANT";
 
-  if (!isAllowed || (!isOwner && user.role !== "ADMIN")) {
-    return sendError(res, 403, "Only the applicant or administrator can modify this application");
+  if (!isApplicant || !isOwner) {
+    return sendError(res, 403, "Only the applicant owner can modify this application");
   }
 
   if (req.application.status !== "DRAFT") {
+    const latestReview = req.application.reviews && req.application.reviews.length > 0
+      ? req.application.reviews[0]
+      : null;
+    if (latestReview && latestReview.recommendation === "NEED_MORE_DOCUMENTS") {
+      return next();
+    }
     return sendError(res, 409, "Cannot modify an application that is already submitted");
   }
 

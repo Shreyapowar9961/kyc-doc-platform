@@ -26,6 +26,7 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [expandedDocChecks, setExpandedDocChecks] = useState<Record<number, boolean>>({});
+  const [showAllReviews, setShowAllReviews] = useState(false);
 
   const toggleDocChecks = (docId: number) => {
     setExpandedDocChecks((prev) => ({ ...prev, [docId]: !prev[docId] }));
@@ -80,7 +81,11 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
   };
 
   const handleSubmit = async () => {
-    if (!confirm("Submit this application for verification? You will no longer be able to add or delete documents.")) return;
+    const isResubmission = latestReview?.recommendation === "NEED_MORE_DOCUMENTS";
+    const confirmMsg = isResubmission
+      ? "Re-submit your updated application dossier for officer review?"
+      : "Submit this application for verification? You will no longer be able to add or delete documents.";
+    if (!confirm(confirmMsg)) return;
     try {
       setSubmitting(true);
       setError("");
@@ -111,6 +116,10 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
   const isDraft = application.status === "DRAFT";
   const docs = application.documents || [];
   const dossier = application.dossierVerification;
+  const reviews = application.reviews || [];
+  const latestReview = reviews.length > 0 ? reviews[0] : null;
+  const needsMoreDocs = latestReview?.recommendation === "NEED_MORE_DOCUMENTS";
+  const canUpload = isDraft || needsMoreDocs;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
@@ -130,11 +139,28 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
               className={`text-xs uppercase font-extrabold px-3 py-1 rounded-full border ${
                 isDraft
                   ? "bg-slate-100 text-slate-700 border-slate-300"
+                  : application.status === "RECOMMENDED"
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                   : "bg-indigo-50 text-indigo-700 border-indigo-200"
               }`}
             >
               {application.status}
             </span>
+            {latestReview && (
+              <span
+                className={`text-[11px] font-black uppercase px-2.5 py-0.5 rounded-full border ${
+                  latestReview.recommendation === "APPROVE"
+                    ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                    : latestReview.recommendation === "NEED_MORE_DOCUMENTS"
+                    ? "bg-amber-100 text-amber-800 border-amber-300"
+                    : "bg-rose-100 text-rose-800 border-rose-300"
+                }`}
+              >
+                {latestReview.recommendation === "APPROVE" && "✓ Approved by Officer"}
+                {latestReview.recommendation === "NEED_MORE_DOCUMENTS" && "⚠️ Action: Documents Needed"}
+                {latestReview.recommendation === "REJECT" && "✕ Declined by Officer"}
+              </span>
+            )}
           </div>
           <p className="text-xs text-slate-500 mt-1">
             Application ID: <span className="font-mono">{application.id}</span> &bull; Created on{" "}
@@ -142,14 +168,25 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
           </p>
         </div>
 
-        {isDraft && (
-          <button
-            onClick={handleSubmit}
-            disabled={docs.length === 0 || submitting}
-            className="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition shadow disabled:opacity-50 flex items-center gap-2"
-          >
-            {submitting ? "Submitting..." : "Submit Application for Loan Review"}
-          </button>
+        {(isDraft || needsMoreDocs) && (
+          <div className="flex flex-col items-end gap-1">
+            <button
+              onClick={handleSubmit}
+              disabled={docs.length < 2 || submitting}
+              className="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition shadow disabled:opacity-50 flex items-center gap-2"
+            >
+              {submitting
+                ? "Submitting..."
+                : needsMoreDocs
+                ? "Re-Submit for Loan Review"
+                : "Submit Application for Loan Review"}
+            </button>
+            {docs.length < 2 && (
+              <span className="text-[11px] text-amber-700 font-medium">
+                At least 2 documents required to submit (e.g. Identity and Income proof)
+              </span>
+            )}
+          </div>
         )}
       </div>
 
@@ -158,6 +195,115 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
           {error}
         </div>
       )}
+
+      {/* ─── Institutional Review & Recommendation Section (Applicant Facing) ─── */}
+      {latestReview ? (
+        <div
+          className={`rounded-xl border p-5 mb-6 shadow-xs ${
+            latestReview.recommendation === "APPROVE"
+              ? "bg-emerald-50/70 border-emerald-300"
+              : latestReview.recommendation === "NEED_MORE_DOCUMENTS"
+              ? "bg-amber-50/80 border-amber-300"
+              : "bg-rose-50/70 border-rose-300"
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2.5">
+              <span className="text-2xl">
+                {latestReview.recommendation === "APPROVE" && "✅"}
+                {latestReview.recommendation === "NEED_MORE_DOCUMENTS" && "⚠️"}
+                {latestReview.recommendation === "REJECT" && "❌"}
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-slate-900">
+                    {latestReview.recommendation === "APPROVE" && "Loan Application Recommended for Approval"}
+                    {latestReview.recommendation === "NEED_MORE_DOCUMENTS" && "Action Required: Additional Documents Requested"}
+                    {latestReview.recommendation === "REJECT" && "Application Review Decision: Declined"}
+                  </h2>
+                  <span
+                    className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                      latestReview.recommendation === "APPROVE"
+                        ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                        : latestReview.recommendation === "NEED_MORE_DOCUMENTS"
+                        ? "bg-amber-100 text-amber-800 border-amber-300"
+                        : "bg-rose-100 text-rose-800 border-rose-300"
+                    }`}
+                  >
+                    {latestReview.recommendation.replace(/_/g, " ")}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  Reviewed by {latestReview.reviewer?.name || "Credit Operations Officer"} ({latestReview.reviewer?.role || "OFFICER"}) &bull;{" "}
+                  {new Date(latestReview.createdAt).toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            {needsMoreDocs && (
+              <span className="text-xs font-semibold px-3 py-1 bg-amber-200/60 text-amber-900 rounded-md border border-amber-300">
+                Upload requested docs below &amp; re-submit
+              </span>
+            )}
+          </div>
+
+          <div
+            className={`rounded-lg p-3.5 border text-xs ${
+              latestReview.recommendation === "APPROVE"
+                ? "bg-white/90 border-emerald-200 text-emerald-950"
+                : latestReview.recommendation === "NEED_MORE_DOCUMENTS"
+                ? "bg-white/90 border-amber-200 text-amber-950"
+                : "bg-white/90 border-rose-200 text-rose-950"
+            }`}
+          >
+            <div className="font-bold uppercase tracking-wider text-[10px] mb-1 opacity-75">
+              {latestReview.recommendation === "NEED_MORE_DOCUMENTS"
+                ? "Officer Instructions for Applicant:"
+                : "Officer Review Notes & Rationale:"}
+            </div>
+            <p className="text-sm font-medium leading-relaxed">&ldquo;{latestReview.reason}&rdquo;</p>
+          </div>
+
+          {/* Previous reviews accordion if multiple */}
+          {reviews.length > 1 && (
+            <div className="mt-3 pt-3 border-t border-slate-200/60">
+              <button
+                type="button"
+                onClick={() => setShowAllReviews(!showAllReviews)}
+                className="text-xs font-semibold text-slate-700 hover:text-slate-900 flex items-center gap-1.5"
+              >
+                <span>{showAllReviews ? "▼ Hide" : "► View"} Earlier Review Cycles ({reviews.length - 1} previous)</span>
+              </button>
+
+              {showAllReviews && (
+                <div className="mt-2 space-y-2">
+                  {reviews.slice(1).map((r) => (
+                    <div key={r.id} className="p-3 bg-white/80 rounded-lg border border-slate-200 text-xs">
+                      <div className="flex items-center justify-between text-slate-500 mb-1">
+                        <span className="font-semibold text-slate-700">{r.recommendation.replace(/_/g, " ")}</span>
+                        <span>{new Date(r.createdAt).toLocaleString()}</span>
+                      </div>
+                      <p className="text-slate-700">&ldquo;{r.reason}&rdquo;</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ) : !isDraft ? (
+        <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-4 mb-6 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0">
+            ⏳
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-blue-900">Application Under Officer Review</h3>
+            <p className="text-xs text-blue-700 mt-0.5">
+              Your application has been submitted and is currently in the loan review queue. The assigned loan officer will evaluate your documents and record a recommendation here shortly.
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       {/* Dossier Authenticity & Verification Banner */}
       {docs.length > 0 && dossier && (
@@ -225,8 +371,8 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
         </div>
       )}
 
-      {/* Upload Zone (Visible only while DRAFT) */}
-      {isDraft && (
+      {/* Upload Zone (Visible while DRAFT or if additional docs requested by officer) */}
+      {canUpload && (
         <div className="bg-white p-6 rounded-xl border-2 border-dashed border-indigo-200 hover:border-indigo-400 transition mb-6 text-center">
           <input
             type="file"
@@ -244,10 +390,14 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
               </svg>
             </div>
             <span className="font-semibold text-sm text-indigo-600 hover:text-indigo-700">
-              {uploading ? "Uploading, running OCR, classifying & verifying authenticity..." : "Click to upload KYC documents"}
+              {uploading
+                ? "Uploading, running OCR, classifying & verifying authenticity..."
+                : needsMoreDocs
+                ? "Click to upload requested additional KYC document(s)"
+                : "Click to upload KYC documents"}
             </span>
             <p className="text-xs text-slate-400 mt-1">
-              Supports PAN, Aadhaar, Passport, Salary Slips & Bank Statements (PDF, PNG, JPG, TIFF up to 10MB)
+              Supports PAN, Aadhaar, Passport, Salary Slips &amp; Bank Statements (PDF, PNG, JPG, TIFF up to 10MB)
             </p>
           </label>
         </div>
@@ -328,7 +478,7 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
                       >
                         Download
                       </button>
-                      {isDraft && (
+                      {canUpload && (
                         <button
                           onClick={() => handleDelete(doc.id)}
                           className="px-3 py-1.5 rounded-md text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition"
@@ -362,7 +512,11 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
                       {doc.extractedFields.pan && (
                         <span className="flex items-center gap-1">
                           <span className="text-slate-400">PAN:</span>
-                          <strong className="text-slate-900 font-mono">{doc.extractedFields.pan}</strong>
+                          <strong className="text-slate-900 font-mono">
+                            {typeof doc.extractedFields.pan === "string" && doc.extractedFields.pan.length === 10
+                              ? `${doc.extractedFields.pan.slice(0, 5)}****${doc.extractedFields.pan.slice(9)}`
+                              : doc.extractedFields.pan}
+                          </strong>
                           <span className="text-emerald-500 text-xs">&check;</span>
                         </span>
                       )}
