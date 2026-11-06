@@ -39,17 +39,7 @@ async function seed() {
     console.log(`✅ [${user.role}] ${user.email} (Password: ${DEMO_PASSWORD})`);
   }
 
-  // 2. Promote shekhar123@gmail.com to ADMIN so the user has immediate admin access
-  const shekhar = await prisma.user.findUnique({ where: { email: "shekhar123@gmail.com" } });
-  if (shekhar) {
-    await prisma.user.update({
-      where: { email: "shekhar123@gmail.com" },
-      data: { role: "ADMIN" },
-    });
-    console.log(`\n⭐ Promoted existing user 'shekhar123@gmail.com' to role: ADMIN`);
-  }
-
-  // 3. Clean up throwaway e2e-* test records
+  // 2. Clean up throwaway e2e-* test records
   const e2eUsers = await prisma.user.findMany({
     where: { email: { startsWith: "e2e-" } },
     select: { id: true },
